@@ -83,10 +83,9 @@ do_token_refresh() {
 
   local response
   response="$(curl -s -X POST "$TOKEN_ENDPOINT" \
+    -u "${VOLVO_CLIENT_ID}:${VOLVO_CLIENT_SECRET}" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     -d "grant_type=refresh_token" \
-    -d "client_id=${VOLVO_CLIENT_ID}" \
-    -d "client_secret=${VOLVO_CLIENT_SECRET}" \
     -d "refresh_token=${VOLVO_REFRESH_TOKEN}")"
 
   local new_access_token

@@ -98,11 +98,10 @@ echo "Exchanging authorization code for tokens..."
 
 # --- Exchange code for tokens ---
 RESPONSE="$(curl -s -X POST "$TOKEN_ENDPOINT" \
+  -u "${VOLVO_CLIENT_ID}:${VOLVO_CLIENT_SECRET}" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=authorization_code" \
   -d "code=${AUTH_CODE}" \
-  -d "client_id=${VOLVO_CLIENT_ID}" \
-  -d "client_secret=${VOLVO_CLIENT_SECRET}" \
   -d "redirect_uri=${REDIRECT_URI}")"
 
 ACCESS_TOKEN="$(echo "$RESPONSE" | jq -r '.access_token // empty')"
