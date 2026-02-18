@@ -1,0 +1,5 @@
+.env
+.env.*
+*.key
+openclaw.json
+.DS_Store
