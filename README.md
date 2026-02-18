@@ -19,6 +19,7 @@ An AI-powered assistant for Volvo car owners. Search manuals, troubleshoot warni
 Copy this skill to your OpenClaw skills directory:
 
 ```bash
+mkdir -p ~/.openclaw/skills
 cp -r volvo-cars-support ~/.openclaw/skills/volvo-cars-support
 ```
 

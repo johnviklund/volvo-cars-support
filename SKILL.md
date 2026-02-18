@@ -1,5 +1,6 @@
 ---
 name: volvo-cars-support
+version: 0.1.0
 description: Help Volvo owners search manuals/knowledge articles and interact with their vehicle (status, diagnostics, remote commands) via Volvo APIs.
 homepage: https://github.com/johnviklund/volvo-cars-support
 user-invocable: true
@@ -160,40 +161,13 @@ This capability requires the following environment variables:
 
 **If credentials are missing:** Do NOT attempt API calls. Instead, show the user the setup instructions below.
 
-### Read-only endpoints (GET)
+### Endpoints
 
-| Endpoint | What it returns |
-|----------|----------------|
-| `GET /vehicles` | List of VINs linked to the account |
-| `GET /vehicles/{vin}` | Vehicle details (model, year, fuel type, colour) |
-| `GET /vehicles/{vin}/doors` | Door and lock status |
-| `GET /vehicles/{vin}/windows` | Window positions |
-| `GET /vehicles/{vin}/engine-status` | Engine running/stopped |
-| `GET /vehicles/{vin}/fuel` | Fuel level in litres |
-| `GET /vehicles/{vin}/odometer` | Odometer in km |
-| `GET /vehicles/{vin}/tyres` | Tyre pressure status |
-| `GET /vehicles/{vin}/brakes` | Brake fluid level |
-| `GET /vehicles/{vin}/diagnostics` | Service warnings, distance to service |
-| `GET /vehicles/{vin}/engine` | Oil level, coolant level warnings |
-| `GET /vehicles/{vin}/warnings` | Bulb/light failure warnings |
-| `GET /vehicles/{vin}/statistics` | Average speed, fuel consumption, trip meters |
-| `GET /vehicles/{vin}/commands` | List supported commands |
-| `GET /vehicles/{vin}/command-accessibility` | Check if vehicle can receive commands |
+**Read-only (GET):** `/vehicles`, `/vehicles/{vin}`, `…/doors`, `…/windows`, `…/engine-status`, `…/fuel`, `…/odometer`, `…/tyres`, `…/brakes`, `…/diagnostics`, `…/engine`, `…/warnings`, `…/statistics`, `…/commands`, `…/command-accessibility`
 
-### Command endpoints (POST)
+**Commands (POST):** `lock`, `lock-reduced-guard`, `honk`, `flash`, `honk-flash`, `climatization-start`, `climatization-stop`, **`unlock`** (high-risk), **`engine-start`** (high-risk), **`engine-stop`** (high-risk)
 
-| Command | Endpoint | Risk Level |
-|---------|----------|------------|
-| Lock doors | `POST /vehicles/{vin}/commands/lock` | Low |
-| Lock (reduced guard) | `POST /vehicles/{vin}/commands/lock-reduced-guard` | Low |
-| Honk horn | `POST /vehicles/{vin}/commands/honk` | Low |
-| Flash lights | `POST /vehicles/{vin}/commands/flash` | Low |
-| Honk and flash | `POST /vehicles/{vin}/commands/honk-flash` | Low |
-| Start climatisation | `POST /vehicles/{vin}/commands/climatization-start` | Low |
-| Stop climatisation | `POST /vehicles/{vin}/commands/climatization-stop` | Low |
-| **Unlock doors** | `POST /vehicles/{vin}/commands/unlock` | **High** |
-| **Start engine** | `POST /vehicles/{vin}/commands/engine-start` | **High** |
-| **Stop engine** | `POST /vehicles/{vin}/commands/engine-stop` | **High** |
+See `references/connected-vehicle-api.md` for full request/response details and `references/command-statuses.md` for invoke status codes.
 
 ### Command invoke statuses
 
