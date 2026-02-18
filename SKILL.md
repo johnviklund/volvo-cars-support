@@ -1,9 +1,9 @@
 ---
 name: volvo-cars-support
 description: Help Volvo owners search manuals/knowledge articles and interact with their vehicle (status, diagnostics, remote commands) via Volvo APIs.
-homepage: https://github.com/jviklun/volvo-cars-support
+homepage: https://github.com/johnviklund/volvo-cars-support
 user-invocable: true
-metadata: {"openclaw": {"primaryEnv": "VCC_API_KEY", "requires": {"bins": ["curl", "jq"], "env": ["VCC_API_KEY", "VOLVO_ACCESS_TOKEN"]}}}
+metadata: {"openclaw": {"requires": {"bins": ["curl", "jq"], "env": ["VCC_API_KEY", "VOLVO_ACCESS_TOKEN"]}}}
 ---
 
 # Volvo Cars Support Skill
@@ -258,28 +258,7 @@ Required scopes vary by endpoint but commonly include:
 
 ### Step 4: Configure Credentials
 
-Add your credentials to `~/.openclaw/openclaw.json` so they are securely injected at runtime:
-
-```json
-{
-  "skills": {
-    "entries": {
-      "volvo-cars-support": {
-        "apiKey": "your-primary-vcc-api-key",
-        "env": {
-          "VOLVO_ACCESS_TOKEN": "your-bearer-token",
-          "VOLVO_VIN": "YV1XZ12345678901",
-          "VCC_API_KEY_SECONDARY": "your-secondary-vcc-api-key"
-        }
-      }
-    }
-  }
-}
-```
-
-- `apiKey` maps to `VCC_API_KEY` (the primary key).
-- `VOLVO_VIN` and `VCC_API_KEY_SECONDARY` are optional.
-- Your VIN can be found in the Volvo Cars app, on your vehicle registration documents, or by calling `GET /vehicles`.
+The user must set `VCC_API_KEY` and `VOLVO_ACCESS_TOKEN` as environment variables for this skill. `VOLVO_VIN` and `VCC_API_KEY_SECONDARY` are optional — if `VOLVO_VIN` is omitted, discover it at runtime via `GET /vehicles`. See the project README for configuration details.
 
 ---
 

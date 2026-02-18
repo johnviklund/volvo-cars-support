@@ -37,23 +37,16 @@ To check vehicle status and send commands, you need API credentials:
 1. Register at [developer.volvocars.com](https://developer.volvocars.com)
 2. Create an application to get your **VCC API Key**
 3. Authenticate via Volvo ID OAuth2 to get a **Bearer token**
-4. Add credentials to `~/.openclaw/openclaw.json`:
+4. Create a `.env` file in the skill directory:
 
-```json
-{
-  "skills": {
-    "entries": {
-      "volvo-cars-support": {
-        "apiKey": "your-vcc-api-key",
-        "env": {
-          "VOLVO_ACCESS_TOKEN": "your-bearer-token",
-          "VOLVO_VIN": "YV1XZ12345678901"
-        }
-      }
-    }
-  }
-}
 ```
+VCC_API_KEY=your-vcc-api-key
+VOLVO_ACCESS_TOKEN=your-bearer-token
+```
+
+`VOLVO_VIN` and `VCC_API_KEY_SECONDARY` can also be set but are optional — if `VOLVO_VIN` is omitted, the skill discovers your VIN(s) at runtime via `GET /vehicles`.
+
+> Restrict file permissions: `chmod 600 .env`
 
 ## Usage
 
