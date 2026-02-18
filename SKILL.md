@@ -1,6 +1,6 @@
 ---
 name: volvo-cars-support
-version: 0.1.1
+version: 0.1.2
 description: Help Volvo owners search manuals/knowledge articles and interact with their vehicle (status, diagnostics, remote commands) via Volvo APIs.
 homepage: https://github.com/johnviklund/volvo-cars-support
 user-invocable: true
