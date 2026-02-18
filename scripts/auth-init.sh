@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 # auth-init.sh — One-time OAuth2 Authorization Code flow for Volvo Connected Vehicle API
 #
+# NOTE: This script requires a PUBLISHED app on the Volvo developer portal.
+# Publishing requires a real redirect URI (no localhost) and takes 14–21 days
+# for Volvo to review. After approval, you receive VOLVO_CLIENT_ID and
+# VOLVO_CLIENT_SECRET.
+#
+# If you don't have a published app, use test access tokens instead:
+#   https://developer.volvocars.com/apis/docs/test-access-tokens/
+#
 # Walks you through the full OAuth2 flow:
 #   1. Validates VOLVO_CLIENT_ID and VOLVO_CLIENT_SECRET in .env
 #   2. Opens the authorization URL in your browser
@@ -8,7 +16,7 @@
 #   4. Exchanges the code for access_token + refresh_token
 #   5. Saves tokens to .env
 #
-# After running this once, use auth-refresh.sh to renew tokens automatically.
+# After running this once, auth-refresh.sh renews tokens automatically.
 
 set -euo pipefail
 
@@ -17,7 +25,7 @@ ENV_FILE="${SCRIPT_DIR}/.env"
 
 AUTH_ENDPOINT="https://volvoid.eu.volvocars.com/as/authorization.oauth2"
 TOKEN_ENDPOINT="https://volvoid.eu.volvocars.com/as/token.oauth2"
-REDIRECT_URI="https://localhost:8080/callback"
+REDIRECT_URI="${VOLVO_REDIRECT_URI:-https://localhost:8080/callback}"
 
 ALL_SCOPES="openid conve:vehicle_relation conve:diagnostics_engine_status conve:diagnostics_workshop conve:fuel_status conve:odometer_status conve:tyre_status conve:environment conve:windows_status conve:door_and_lock_status conve:warnings conve:commands conve:lock conve:engine_status conve:climate_status"
 

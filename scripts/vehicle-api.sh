@@ -4,16 +4,14 @@
 #
 # Requires environment variables:
 #   VCC_API_KEY          - Your primary Volvo Cars API key (from developer.volvocars.com)
-#
-# For token refresh (recommended):
-#   VOLVO_CLIENT_ID      - OAuth2 client ID
-#   VOLVO_CLIENT_SECRET  - OAuth2 client secret
-#   VOLVO_REFRESH_TOKEN  - Refresh token from initial auth flow
+#   VOLVO_ACCESS_TOKEN   - OAuth2 Bearer token from Volvo ID
 #
 # Optional environment variables:
-#   VOLVO_ACCESS_TOKEN     - OAuth2 Bearer token (auto-refreshed if refresh credentials are set)
 #   VOLVO_VIN              - Default VIN; auto-substituted into {vin} path segments
 #   VCC_API_KEY_SECONDARY  - Secondary API key; used as fallback on 429
+#   VOLVO_CLIENT_ID        - OAuth2 client ID (enables auto-refresh on 401)
+#   VOLVO_CLIENT_SECRET    - OAuth2 client secret (enables auto-refresh on 401)
+#   VOLVO_REFRESH_TOKEN    - Refresh token (enables auto-refresh on 401)
 #
 # Examples:
 #   ./scripts/vehicle-api.sh GET /vehicles
@@ -41,13 +39,10 @@ if [ -z "${VCC_API_KEY:-}" ]; then
   exit 1
 fi
 
-# If no access token, attempt a refresh before failing
 if [ -z "${VOLVO_ACCESS_TOKEN:-}" ]; then
-  if ! do_token_refresh; then
-    echo "Error: VOLVO_ACCESS_TOKEN is not set and token refresh failed." >&2
-    echo "Run ./scripts/auth-init.sh to authenticate." >&2
-    exit 1
-  fi
+  echo "Error: VOLVO_ACCESS_TOKEN environment variable is not set." >&2
+  echo "Get a test token at https://developer.volvocars.com/apis/docs/test-access-tokens/" >&2
+  exit 1
 fi
 
 if [ $# -lt 2 ]; then
@@ -95,10 +90,10 @@ RESPONSE="$(do_request "$VCC_API_KEY")"
 HTTP_CODE="${RESPONSE##*$'\n'}"
 RESPONSE_BODY="${RESPONSE%$'\n'"$HTTP_CODE"}"
 
-# --- On 401: attempt token refresh and retry ---
+# --- On 401: attempt token refresh if credentials are available ---
 if [[ "$HTTP_CODE" == "401" ]]; then
-  echo "HTTP 401 — attempting token refresh..." >&2
-  if do_token_refresh; then
+  if do_token_refresh 2>/dev/null; then
+    echo "Token refreshed — retrying request..." >&2
     RESPONSE="$(do_request "$VCC_API_KEY")"
     HTTP_CODE="${RESPONSE##*$'\n'}"
     RESPONSE_BODY="${RESPONSE%$'\n'"$HTTP_CODE"}"

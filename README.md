@@ -36,34 +36,40 @@ The GraphQL API for searching manuals and articles works without authentication.
 To check vehicle status and send commands, you need API credentials:
 
 1. Register at [developer.volvocars.com](https://developer.volvocars.com)
-2. Create an application to get your **VCC API Key** and **OAuth2 client credentials**
-3. Add them to a `.env` file in the skill directory:
+2. Create an application to get your **VCC API Key**
+3. Get a **test access token** from the [test access tokens](https://developer.volvocars.com/apis/docs/test-access-tokens/) page
+4. Create a `.env` file in the skill directory:
 
 ```
 VCC_API_KEY=your-vcc-api-key
-VOLVO_CLIENT_ID=your-oauth2-client-id
-VOLVO_CLIENT_SECRET=your-oauth2-client-secret
+VOLVO_ACCESS_TOKEN=your-test-access-token
 ```
 
-4. Run the interactive setup script to authenticate:
+> Test tokens are short-lived (~1 hour). When one expires, generate a new one from the developer portal.
 
-```bash
-./scripts/auth-init.sh
+#### Automated token refresh (published apps only)
+
+If you have a [published app](https://developer.volvocars.com/apis/docs/authorisation/) (requires Volvo review, 14–21 days), you can enable automated token refresh by adding your OAuth2 client credentials:
+
+```
+VOLVO_CLIENT_ID=your-client-id
+VOLVO_CLIENT_SECRET=your-client-secret
+VOLVO_REFRESH_TOKEN=your-refresh-token
 ```
 
-This opens your browser for the Volvo ID OAuth2 flow and saves the access and refresh tokens to `.env`. Tokens are refreshed automatically when they expire.
+Run `./scripts/auth-init.sh` to complete the initial OAuth2 flow. After that, tokens refresh automatically on 401 responses.
 
 #### Environment Variables
 
-| Variable | Required | Auto | Description |
-|----------|----------|------|-------------|
-| `VCC_API_KEY` | **Yes** | | Primary API key from developer portal |
-| `VOLVO_CLIENT_ID` | **Yes** | | OAuth2 client ID from your app |
-| `VOLVO_CLIENT_SECRET` | **Yes** | | OAuth2 client secret |
-| `VOLVO_ACCESS_TOKEN` | | **Yes** | Bearer token — managed by `auth-init.sh` / `auth-refresh.sh` |
-| `VOLVO_REFRESH_TOKEN` | | **Yes** | Refresh token — managed by `auth-init.sh` / `auth-refresh.sh` |
-| `VOLVO_VIN` | | | Default VIN — auto-substituted into `{vin}` path segments |
-| `VCC_API_KEY_SECONDARY` | | | Secondary API key — fallback on rate limiting |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VCC_API_KEY` | **Yes** | Primary API key from developer portal |
+| `VOLVO_ACCESS_TOKEN` | **Yes** | OAuth2 Bearer token (test token or from `auth-init.sh`) |
+| `VOLVO_VIN` | No | Default VIN — auto-substituted into `{vin}` path segments |
+| `VCC_API_KEY_SECONDARY` | No | Secondary API key — fallback on rate limiting |
+| `VOLVO_CLIENT_ID` | No | OAuth2 client ID — enables auto-refresh (published apps) |
+| `VOLVO_CLIENT_SECRET` | No | OAuth2 client secret — enables auto-refresh (published apps) |
+| `VOLVO_REFRESH_TOKEN` | No | Refresh token — enables auto-refresh (published apps) |
 
 > Restrict file permissions: `chmod 600 .env`
 
@@ -84,8 +90,8 @@ This opens your browser for the Volvo ID OAuth2 flow and saves the access and re
 | `scripts/graphql-query.sh` | Run GraphQL queries against the support content API |
 | `scripts/graphql-introspect.sh` | Explore the full GraphQL schema |
 | `scripts/vehicle-api.sh` | Call Connected Vehicle API endpoints |
-| `scripts/auth-init.sh` | One-time OAuth2 setup (Authorization Code flow) |
-| `scripts/auth-refresh.sh` | Refresh expired access tokens |
+| `scripts/auth-init.sh` | One-time OAuth2 setup (published apps only) |
+| `scripts/auth-refresh.sh` | Refresh expired access tokens (published apps only) |
 
 ## Reference Documentation
 

@@ -1,16 +1,11 @@
 #!/usr/bin/env bash
 # auth-refresh.sh — OAuth2 token refresh for Volvo Connected Vehicle API
 #
-# Refreshes the access token using the refresh_token grant type.
+# If VOLVO_CLIENT_ID, VOLVO_CLIENT_SECRET, and VOLVO_REFRESH_TOKEN are set,
+# performs an automated token refresh via the refresh_token grant.
+# Otherwise, prints manual instructions for obtaining a new test token.
+#
 # Can be sourced (exposes do_token_refresh and update_env_var) or run standalone.
-#
-# Required environment variables (or in .env):
-#   VOLVO_CLIENT_ID      - OAuth2 client ID from your Volvo developer app
-#   VOLVO_CLIENT_SECRET   - OAuth2 client secret
-#   VOLVO_REFRESH_TOKEN   - Refresh token from initial Authorization Code flow
-#
-# On success: updates .env with new VOLVO_ACCESS_TOKEN (and VOLVO_REFRESH_TOKEN
-# if the server rotates it), and exports the values into the current shell.
 
 set -euo pipefail
 
@@ -47,10 +42,30 @@ update_env_var() {
   chmod 600 "$env_file"
 }
 
+# --- _print_manual_instructions: fallback when automated refresh isn't possible ---
+_print_manual_instructions() {
+  cat >&2 <<'EOF'
+=== Volvo Connected Vehicle API — Token Refresh ===
+
+Automated refresh is not available (requires a published app with
+VOLVO_CLIENT_ID, VOLVO_CLIENT_SECRET, and VOLVO_REFRESH_TOKEN).
+
+To get a new test access token:
+
+1. Go to https://developer.volvocars.com
+2. Log in and open your application
+3. Navigate to the "Test access tokens" page
+4. Generate a new token and update your .env file:
+     VOLVO_ACCESS_TOKEN=<your-new-token>
+
+Note: Test tokens are short-lived (~1 hour). For automated refresh,
+you need a published app — see scripts/auth-init.sh for details.
+EOF
+}
+
 # --- do_token_refresh: exchange refresh token for a new access token ---
 # Returns 0 on success, 1 on failure.
-# On success, VOLVO_ACCESS_TOKEN (and potentially VOLVO_REFRESH_TOKEN) are
-# updated in .env and exported into the current shell.
+# If client credentials are missing, prints manual instructions and returns 1.
 do_token_refresh() {
   # Load .env if variables aren't already set
   if [ -z "${VOLVO_CLIENT_ID:-}" ] || [ -z "${VOLVO_CLIENT_SECRET:-}" ] || [ -z "${VOLVO_REFRESH_TOKEN:-}" ]; then
@@ -61,21 +76,9 @@ do_token_refresh() {
     fi
   fi
 
-  if [ -z "${VOLVO_CLIENT_ID:-}" ]; then
-    echo "Error: VOLVO_CLIENT_ID is not set." >&2
-    echo "Run ./scripts/auth-init.sh to set up authentication." >&2
-    return 1
-  fi
-
-  if [ -z "${VOLVO_CLIENT_SECRET:-}" ]; then
-    echo "Error: VOLVO_CLIENT_SECRET is not set." >&2
-    echo "Run ./scripts/auth-init.sh to set up authentication." >&2
-    return 1
-  fi
-
-  if [ -z "${VOLVO_REFRESH_TOKEN:-}" ]; then
-    echo "Error: VOLVO_REFRESH_TOKEN is not set." >&2
-    echo "Run ./scripts/auth-init.sh to authenticate and obtain tokens." >&2
+  # Fall back to manual instructions if credentials are missing
+  if [ -z "${VOLVO_CLIENT_ID:-}" ] || [ -z "${VOLVO_CLIENT_SECRET:-}" ] || [ -z "${VOLVO_REFRESH_TOKEN:-}" ]; then
+    _print_manual_instructions
     return 1
   fi
 
