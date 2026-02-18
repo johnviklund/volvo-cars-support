@@ -17,6 +17,14 @@
 
 set -euo pipefail
 
+# Load .env if present (auto-export so vars are available without export prefixes)
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+if [ -f "$SCRIPT_DIR/.env" ]; then
+  set -a
+  source "$SCRIPT_DIR/.env"
+  set +a
+fi
+
 BASE_URL="https://api.volvocars.com/connected-vehicle/v2"
 
 if [ -z "${VCC_API_KEY:-}" ]; then
