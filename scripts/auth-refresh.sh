@@ -1,49 +1,123 @@
 #!/usr/bin/env bash
-# auth-refresh.sh — OAuth token refresh guidance for Volvo Connected Vehicle API
+# auth-refresh.sh — OAuth2 token refresh for Volvo Connected Vehicle API
 #
-# The Volvo ID OAuth2 flow requires a browser-based login and cannot be fully
-# automated without a client_secret (which is tied to your registered app).
-# This script prints the steps needed to obtain a fresh access token.
+# Refreshes the access token using the refresh_token grant type.
+# Can be sourced (exposes do_token_refresh and update_env_var) or run standalone.
+#
+# Required environment variables (or in .env):
+#   VOLVO_CLIENT_ID      - OAuth2 client ID from your Volvo developer app
+#   VOLVO_CLIENT_SECRET   - OAuth2 client secret
+#   VOLVO_REFRESH_TOKEN   - Refresh token from initial Authorization Code flow
+#
+# On success: updates .env with new VOLVO_ACCESS_TOKEN (and VOLVO_REFRESH_TOKEN
+# if the server rotates it), and exports the values into the current shell.
 
 set -euo pipefail
 
-cat <<'EOF'
-=== Volvo Connected Vehicle API — Token Refresh ===
+TOKEN_ENDPOINT="https://volvoid.eu.volvocars.com/as/token.oauth2"
 
-Your VOLVO_ACCESS_TOKEN has expired or is missing. Follow these steps to
-obtain a new one:
+# Resolve project root (works whether sourced or executed)
+_AUTH_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)"
+_ENV_FILE="${_AUTH_SCRIPT_DIR}/.env"
 
-1. Go to the Volvo Developer Portal:
-   https://developer.volvocars.com
+# --- update_env_var: atomically update or add a variable in .env ---
+# Usage: update_env_var VAR_NAME "new_value"
+update_env_var() {
+  local var_name="$1"
+  local var_value="$2"
+  local env_file="${_ENV_FILE}"
 
-2. Log in and open your application settings.
+  if [ ! -f "$env_file" ]; then
+    echo "${var_name}=${var_value}" > "$env_file"
+    chmod 600 "$env_file"
+    return
+  fi
 
-3. Use the OAuth2 Authorization Code flow to get a new access token.
-   The portal documents the required endpoints:
-     - Authorization: https://volvoid.eu.volvocars.com/as/authorization.oauth2
-     - Token:         https://volvoid.eu.volvocars.com/as/token.oauth2
+  local tmp_file
+  tmp_file="$(mktemp "${env_file}.XXXXXX")"
 
-4. Request the scopes your application needs. Common scopes:
-     conve:vehicle_relation        — list vehicles, get details
-     conve:diagnostics_engine_status — engine status
-     conve:diagnostics_workshop    — diagnostics, brakes
-     conve:fuel_status             — fuel level
-     conve:odometer_status         — odometer
-     conve:tyre_status             — tyre pressure
-     conve:environment             — statistics
-     conve:windows_status          — windows
-     conve:door_and_lock_status    — doors and locks
-     conve:warnings                — warnings
-     conve:commands                — remote commands
-     conve:lock                    — lock/unlock
-     conve:engine_status           — engine start/stop
-     conve:climate_status          — climatisation
+  if grep -q "^${var_name}=" "$env_file" 2>/dev/null; then
+    sed "s|^${var_name}=.*|${var_name}=${var_value}|" "$env_file" > "$tmp_file"
+  else
+    cp "$env_file" "$tmp_file"
+    echo "${var_name}=${var_value}" >> "$tmp_file"
+  fi
 
-5. Copy the new access token and update your .env file:
-     VOLVO_ACCESS_TOKEN=<your-new-token>
+  mv "$tmp_file" "$env_file"
+  chmod 600 "$env_file"
+}
 
-Note: Automated refresh is not possible without a client_secret stored
-server-side. This is a manual step by design.
-EOF
+# --- do_token_refresh: exchange refresh token for a new access token ---
+# Returns 0 on success, 1 on failure.
+# On success, VOLVO_ACCESS_TOKEN (and potentially VOLVO_REFRESH_TOKEN) are
+# updated in .env and exported into the current shell.
+do_token_refresh() {
+  # Load .env if variables aren't already set
+  if [ -z "${VOLVO_CLIENT_ID:-}" ] || [ -z "${VOLVO_CLIENT_SECRET:-}" ] || [ -z "${VOLVO_REFRESH_TOKEN:-}" ]; then
+    if [ -f "$_ENV_FILE" ]; then
+      set -a
+      source "$_ENV_FILE"
+      set +a
+    fi
+  fi
 
-exit 0
+  if [ -z "${VOLVO_CLIENT_ID:-}" ]; then
+    echo "Error: VOLVO_CLIENT_ID is not set." >&2
+    echo "Run ./scripts/auth-init.sh to set up authentication." >&2
+    return 1
+  fi
+
+  if [ -z "${VOLVO_CLIENT_SECRET:-}" ]; then
+    echo "Error: VOLVO_CLIENT_SECRET is not set." >&2
+    echo "Run ./scripts/auth-init.sh to set up authentication." >&2
+    return 1
+  fi
+
+  if [ -z "${VOLVO_REFRESH_TOKEN:-}" ]; then
+    echo "Error: VOLVO_REFRESH_TOKEN is not set." >&2
+    echo "Run ./scripts/auth-init.sh to authenticate and obtain tokens." >&2
+    return 1
+  fi
+
+  echo "Refreshing access token..." >&2
+
+  local response
+  response="$(curl -s -X POST "$TOKEN_ENDPOINT" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    -d "grant_type=refresh_token" \
+    -d "client_id=${VOLVO_CLIENT_ID}" \
+    -d "client_secret=${VOLVO_CLIENT_SECRET}" \
+    -d "refresh_token=${VOLVO_REFRESH_TOKEN}")"
+
+  local new_access_token
+  new_access_token="$(echo "$response" | jq -r '.access_token // empty')"
+
+  if [ -z "$new_access_token" ]; then
+    local error_desc
+    error_desc="$(echo "$response" | jq -r '.error_description // .error // "Unknown error"')"
+    echo "Error: Token refresh failed — ${error_desc}" >&2
+    echo "Run ./scripts/auth-init.sh to re-authenticate." >&2
+    return 1
+  fi
+
+  # Update access token
+  update_env_var "VOLVO_ACCESS_TOKEN" "$new_access_token"
+  export VOLVO_ACCESS_TOKEN="$new_access_token"
+
+  # Update refresh token if rotated
+  local new_refresh_token
+  new_refresh_token="$(echo "$response" | jq -r '.refresh_token // empty')"
+  if [ -n "$new_refresh_token" ] && [ "$new_refresh_token" != "${VOLVO_REFRESH_TOKEN}" ]; then
+    update_env_var "VOLVO_REFRESH_TOKEN" "$new_refresh_token"
+    export VOLVO_REFRESH_TOKEN="$new_refresh_token"
+    echo "Refresh token rotated and saved." >&2
+  fi
+
+  echo "Access token refreshed successfully." >&2
+  return 0
+}
+
+# --- Run standalone if executed directly ---
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  do_token_refresh
+fi

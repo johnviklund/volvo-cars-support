@@ -36,16 +36,34 @@ The GraphQL API for searching manuals and articles works without authentication.
 To check vehicle status and send commands, you need API credentials:
 
 1. Register at [developer.volvocars.com](https://developer.volvocars.com)
-2. Create an application to get your **VCC API Key**
-3. Authenticate via Volvo ID OAuth2 to get a **Bearer token**
-4. Create a `.env` file in the skill directory:
+2. Create an application to get your **VCC API Key** and **OAuth2 client credentials**
+3. Add them to a `.env` file in the skill directory:
 
 ```
 VCC_API_KEY=your-vcc-api-key
-VOLVO_ACCESS_TOKEN=your-bearer-token
+VOLVO_CLIENT_ID=your-oauth2-client-id
+VOLVO_CLIENT_SECRET=your-oauth2-client-secret
 ```
 
-`VOLVO_VIN` and `VCC_API_KEY_SECONDARY` can also be set but are optional — if `VOLVO_VIN` is omitted, the skill discovers your VIN(s) at runtime via `GET /vehicles`.
+4. Run the interactive setup script to authenticate:
+
+```bash
+./scripts/auth-init.sh
+```
+
+This opens your browser for the Volvo ID OAuth2 flow and saves the access and refresh tokens to `.env`. Tokens are refreshed automatically when they expire.
+
+#### Environment Variables
+
+| Variable | Required | Auto | Description |
+|----------|----------|------|-------------|
+| `VCC_API_KEY` | **Yes** | | Primary API key from developer portal |
+| `VOLVO_CLIENT_ID` | **Yes** | | OAuth2 client ID from your app |
+| `VOLVO_CLIENT_SECRET` | **Yes** | | OAuth2 client secret |
+| `VOLVO_ACCESS_TOKEN` | | **Yes** | Bearer token — managed by `auth-init.sh` / `auth-refresh.sh` |
+| `VOLVO_REFRESH_TOKEN` | | **Yes** | Refresh token — managed by `auth-init.sh` / `auth-refresh.sh` |
+| `VOLVO_VIN` | | | Default VIN — auto-substituted into `{vin}` path segments |
+| `VCC_API_KEY_SECONDARY` | | | Secondary API key — fallback on rate limiting |
 
 > Restrict file permissions: `chmod 600 .env`
 
@@ -66,6 +84,8 @@ VOLVO_ACCESS_TOKEN=your-bearer-token
 | `scripts/graphql-query.sh` | Run GraphQL queries against the support content API |
 | `scripts/graphql-introspect.sh` | Explore the full GraphQL schema |
 | `scripts/vehicle-api.sh` | Call Connected Vehicle API endpoints |
+| `scripts/auth-init.sh` | One-time OAuth2 setup (Authorization Code flow) |
+| `scripts/auth-refresh.sh` | Refresh expired access tokens |
 
 ## Reference Documentation
 

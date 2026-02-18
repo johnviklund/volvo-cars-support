@@ -4,11 +4,16 @@
 #
 # Requires environment variables:
 #   VCC_API_KEY          - Your primary Volvo Cars API key (from developer.volvocars.com)
-#   VOLVO_ACCESS_TOKEN   - OAuth2 Bearer token from Volvo ID
+#
+# For token refresh (recommended):
+#   VOLVO_CLIENT_ID      - OAuth2 client ID
+#   VOLVO_CLIENT_SECRET  - OAuth2 client secret
+#   VOLVO_REFRESH_TOKEN  - Refresh token from initial auth flow
 #
 # Optional environment variables:
+#   VOLVO_ACCESS_TOKEN     - OAuth2 Bearer token (auto-refreshed if refresh credentials are set)
 #   VOLVO_VIN              - Default VIN; auto-substituted into {vin} path segments
-#   VCC_API_KEY_SECONDARY  - Secondary API key; used as fallback on 401/429
+#   VCC_API_KEY_SECONDARY  - Secondary API key; used as fallback on 429
 #
 # Examples:
 #   ./scripts/vehicle-api.sh GET /vehicles
@@ -25,6 +30,9 @@ if [ -f "$SCRIPT_DIR/.env" ]; then
   set +a
 fi
 
+# Source auth-refresh.sh to make do_token_refresh() available
+source "$(dirname "$0")/auth-refresh.sh"
+
 BASE_URL="https://api.volvocars.com/connected-vehicle/v2"
 
 if [ -z "${VCC_API_KEY:-}" ]; then
@@ -33,10 +41,13 @@ if [ -z "${VCC_API_KEY:-}" ]; then
   exit 1
 fi
 
+# If no access token, attempt a refresh before failing
 if [ -z "${VOLVO_ACCESS_TOKEN:-}" ]; then
-  echo "Error: VOLVO_ACCESS_TOKEN environment variable is not set." >&2
-  echo "Obtain a Bearer token via Volvo ID OAuth2 flow." >&2
-  exit 1
+  if ! do_token_refresh; then
+    echo "Error: VOLVO_ACCESS_TOKEN is not set and token refresh failed." >&2
+    echo "Run ./scripts/auth-init.sh to authenticate." >&2
+    exit 1
+  fi
 fi
 
 if [ $# -lt 2 ]; then
@@ -84,9 +95,19 @@ RESPONSE="$(do_request "$VCC_API_KEY")"
 HTTP_CODE="${RESPONSE##*$'\n'}"
 RESPONSE_BODY="${RESPONSE%$'\n'"$HTTP_CODE"}"
 
-# --- Failover to secondary key on 401 or 429 ---
-if [[ "$HTTP_CODE" == "401" || "$HTTP_CODE" == "429" ]] && [ -n "${VCC_API_KEY_SECONDARY:-}" ]; then
-  echo "Primary key returned HTTP $HTTP_CODE — retrying with secondary key..." >&2
+# --- On 401: attempt token refresh and retry ---
+if [[ "$HTTP_CODE" == "401" ]]; then
+  echo "HTTP 401 — attempting token refresh..." >&2
+  if do_token_refresh; then
+    RESPONSE="$(do_request "$VCC_API_KEY")"
+    HTTP_CODE="${RESPONSE##*$'\n'}"
+    RESPONSE_BODY="${RESPONSE%$'\n'"$HTTP_CODE"}"
+  fi
+fi
+
+# --- Failover to secondary key on 429 ---
+if [[ "$HTTP_CODE" == "429" ]] && [ -n "${VCC_API_KEY_SECONDARY:-}" ]; then
+  echo "Primary key returned HTTP 429 — retrying with secondary key..." >&2
   RESPONSE="$(do_request "$VCC_API_KEY_SECONDARY")"
   HTTP_CODE="${RESPONSE##*$'\n'}"
   RESPONSE_BODY="${RESPONSE%$'\n'"$HTTP_CODE"}"

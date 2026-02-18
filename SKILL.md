@@ -1,10 +1,10 @@
 ---
 name: volvo-cars-support
-version: 0.1.2
+version: 0.1.3
 description: Help Volvo owners search manuals/knowledge articles and interact with their vehicle (status, diagnostics, remote commands) via Volvo APIs.
 homepage: https://github.com/johnviklund/volvo-cars-support
 user-invocable: true
-metadata: {"openclaw": {"requires": {"bins": ["curl", "jq"], "env": ["VCC_API_KEY", "VOLVO_ACCESS_TOKEN"]}}}
+metadata: {"openclaw": {"requires": {"bins": ["curl", "jq"], "env": ["VCC_API_KEY", "VOLVO_CLIENT_ID", "VOLVO_CLIENT_SECRET"]}}}
 ---
 
 # Volvo Cars Support Skill
@@ -152,12 +152,15 @@ The full API is documented in `references/connected-vehicle-api.md`.
 
 This capability requires the following environment variables:
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `VCC_API_KEY` | **Yes** | Primary API key from [developer.volvocars.com](https://developer.volvocars.com) |
-| `VOLVO_ACCESS_TOKEN` | **Yes** | OAuth2 Bearer token from Volvo ID |
-| `VOLVO_VIN` | No | Default VIN — auto-substituted into `{vin}` path segments |
-| `VCC_API_KEY_SECONDARY` | No | Secondary API key — used as fallback on 401/429 |
+| Variable | Required | Auto | Description |
+|----------|----------|------|-------------|
+| `VCC_API_KEY` | **Yes** | | Primary API key from [developer.volvocars.com](https://developer.volvocars.com) |
+| `VOLVO_CLIENT_ID` | **Yes** | | OAuth2 client ID from your Volvo developer app |
+| `VOLVO_CLIENT_SECRET` | **Yes** | | OAuth2 client secret |
+| `VOLVO_ACCESS_TOKEN` | | **Yes** | Bearer token — managed automatically by `auth-init.sh` / `auth-refresh.sh` |
+| `VOLVO_REFRESH_TOKEN` | | **Yes** | Refresh token — managed automatically by `auth-init.sh` / `auth-refresh.sh` |
+| `VOLVO_VIN` | No | | Default VIN — auto-substituted into `{vin}` path segments |
+| `VCC_API_KEY_SECONDARY` | No | | Secondary API key — used as fallback on rate limiting |
 
 **If credentials are missing:** Do NOT attempt API calls. Instead, show the user the setup instructions below.
 
@@ -209,30 +212,25 @@ If the user needs to set up Connected Vehicle API access, guide them through the
 Go to [developer.volvocars.com](https://developer.volvocars.com) and create an account.
 
 ### Step 2: Create an Application
-Create a new application in the developer portal. This gives you a **VCC API Key**.
+Create a new application in the developer portal. This gives you a **VCC API Key** and **OAuth2 client credentials** (client ID and client secret).
 
-### Step 3: Get a Bearer Token
-Authenticate via the Volvo ID OAuth2 flow to get an access token. The developer portal documents the OAuth2 endpoints and required scopes.
+### Step 3: Add Credentials to `.env`
+Add the following to the `.env` file in the skill directory:
+```
+VCC_API_KEY=your-vcc-api-key
+VOLVO_CLIENT_ID=your-client-id
+VOLVO_CLIENT_SECRET=your-client-secret
+```
 
-Required scopes vary by endpoint but commonly include:
-- `conve:vehicle_relation` — list vehicles, get details
-- `conve:diagnostics_engine_status` — engine status
-- `conve:diagnostics_workshop` — diagnostics, brakes
-- `conve:fuel_status` — fuel level
-- `conve:odometer_status` — odometer
-- `conve:tyre_status` — tyre pressure
-- `conve:environment` — statistics
-- `conve:windows_status` — windows
-- `conve:door_and_lock_status` — doors and locks
-- `conve:warnings` — warnings
-- `conve:commands` — remote commands
-- `conve:lock` — lock/unlock
-- `conve:engine_status` — engine start/stop
-- `conve:climate_status` — climatisation
+### Step 4: Run the Auth Setup Script
+```bash
+./scripts/auth-init.sh
+```
+This opens the browser for the Volvo ID OAuth2 Authorization Code flow, requests all necessary scopes, and saves the access token and refresh token to `.env`.
 
-### Step 4: Configure Credentials
+After the initial setup, tokens are refreshed automatically when they expire. The script `auth-refresh.sh` handles this and is called automatically by `vehicle-api.sh` on HTTP 401 responses.
 
-The user must set `VCC_API_KEY` and `VOLVO_ACCESS_TOKEN` as environment variables for this skill. `VOLVO_VIN` and `VCC_API_KEY_SECONDARY` are optional — if `VOLVO_VIN` is omitted, discover it at runtime via `GET /vehicles`. See the project README for configuration details.
+`VOLVO_VIN` and `VCC_API_KEY_SECONDARY` are optional — if `VOLVO_VIN` is omitted, discover it at runtime via `GET /vehicles`. See the project README for full configuration details.
 
 ---
 
@@ -240,7 +238,7 @@ The user must set `VCC_API_KEY` and `VOLVO_ACCESS_TOKEN` as environment variable
 
 | HTTP Status | Meaning | What to Tell the User |
 |-------------|---------|----------------------|
-| `401` | Token expired or invalid | "Your access token has expired. Please re-authenticate with Volvo ID to get a new token." |
+| `401` | Token expired or invalid | The skill will automatically attempt to refresh the token. If refresh fails: "Your session has expired. Run `./scripts/auth-init.sh` to re-authenticate." |
 | `403` | Insufficient permissions | "Your API key doesn't have the required scope for this action. Check your app permissions at developer.volvocars.com." |
 | `404` | VIN not found | "This VIN is not linked to your Volvo ID account. Make sure the vehicle is registered in your Volvo Cars app." |
 | `422` | Unprocessable | "This command isn't supported by your vehicle model. Use `GET /vehicles/{vin}/commands` to see available commands." |
