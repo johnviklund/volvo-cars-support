@@ -28,6 +28,14 @@ The skill will appear as `/volvo-cars-support` in OpenClaw.
 
 The GraphQL API for searching manuals and articles works without authentication. You can start using it immediately.
 
+### Optional: Set your VIN
+
+Add your Vehicle Identification Number to a `.env` file for personalized, car-specific results:
+
+```
+VOLVO_VIN=YV1XZ12345F123456
+```
+
 ## Usage
 
 ```

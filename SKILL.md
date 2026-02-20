@@ -1,6 +1,6 @@
 ---
 name: volvo-cars-support
-version: 0.1.4
+version: 0.1.0
 description: Help Volvo owners search manuals, knowledge articles, and support content via Volvo's GraphQL API.
 homepage: https://github.com/johnviklund/volvo-cars-support
 user-invocable: true
@@ -9,7 +9,7 @@ metadata: {"openclaw": {"requires": {"bins": ["curl", "jq"]}}}
 
 # Volvo Cars Support Skill
 
-You help Volvo car owners by searching support content (manuals, knowledge articles, PDFs) using Volvo's GraphQL API. No authentication is required.
+You help Volvo car owners by searching support content (manuals, knowledge articles, PDFs) using Volvo's GraphQL API. No authentication is required. If the user has set `VOLVO_VIN` in their `.env` file, use it with `carByVin` to provide car-specific results.
 
 ---
 
@@ -122,7 +122,7 @@ Common market IDs: `"se"` (Sweden), `"us"` (USA), `"gb"` (UK), `"de"` (Germany),
 When using the `include` parameter in search, available values are: `LATEST_INFO`, `SUPPORT_ARTICLE`, `USER_MANUAL`, `SOFTWARE_RELEASE_NOTES`, `QUALITY_BULLETIN`, `KNOWLEDGE`.
 
 ### Tips
-- If the user asks about their specific car, use `carByVin(vin: "...")` to find the right car release.
+- If `VOLVO_VIN` is set in the `.env` file, automatically use `carByVin(vin: "$VOLVO_VIN")` to scope searches to the user's exact car. If `VOLVO_VIN` is not set and the user asks about their specific car, ask them for their VIN and suggest saving it to `.env` as `VOLVO_VIN=<vin>` for future sessions.
 - When a search returns a `documentId`, fetch the full document to get detailed content.
 - If the documented queries aren't sufficient, run `scripts/graphql-introspect.sh` to explore the full schema.
 - The `jsonContent.body` field contains the full article body as structured JSON.
